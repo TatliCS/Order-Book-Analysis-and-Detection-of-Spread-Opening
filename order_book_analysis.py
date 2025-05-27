@@ -204,8 +204,29 @@ class OrderBookAnalyzer:
 
     def visualize_results(self):
         """Generate visualizations from the collected data"""
-        # Visualizations will be implemented here
-        pass
+        if len(self.spreads) == 0:
+            print("Warning: No data to visualize")
+            return
+
+        # Plot spread analysis
+        plot_spread_analysis(
+            self.timestamps,
+            self.spreads,
+            detect_spread_widening(self.spreads, self.widening_threshold),
+            self.spread_threshold
+        )
+
+        # Plot order book depth
+        plot_order_book_depth(self.order_book, self.current_price)
+
+        # Plot fake wall detection
+        fake_walls = detect_fake_walls(self.order_book, self.volume_threshold)
+        plot_fake_wall_detection(self.order_book, fake_walls)
+
+        print("✔ Visualizations generated:")
+        print("  • spread_analysis.png")
+        print("  • order_book_depth.png")
+        print("  • fake_wall_detection.png")
 
 
 # ──────────────────────────────────────────────────────────────
