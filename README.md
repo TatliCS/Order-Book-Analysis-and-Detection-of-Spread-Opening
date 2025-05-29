@@ -34,20 +34,14 @@ python order_book_analysis.py          #~10 min capture
 
 ## 4. Data Visualization and Report
 
+*spread_analysis.png: BTC/USDT Spread – 10-minute capture*
 ![spread_analysis](https://github.com/user-attachments/assets/801a3880-5374-4843-86aa-febd954762b5)
+
+*Example order_book_depth.png: Order-Book Depth*
 ![order_book_depth](https://github.com/user-attachments/assets/e09ae82d-d319-4538-81e6-c486ac58ab1a)
+
+*Example fake_wall_detection.png: Detected Fake Walls*
 ![fake_wall_detection](https://github.com/user-attachments/assets/727d7813-4dfa-4b52-ad7e-dabc2e510bff)
 
 *Example analysis_report.txt file:*
-Order Book Analysis Report
-==================================================
-
-Spread Analysis:
-Average Spread:   -56.245 USDT
-Maximum Spread:     0.010 USDT
-Minimum Spread:  -122.420 USDT
-Widening Events: 403
-
-Recovery-time Analysis:
-Average recovery: 39.68 s  across 13 events
-
+<img width="773" alt="analysis_report" src="https://github.com/user-attachments/assets/42515e4f-dbf6-43f1-9a6e-83c40fb785c6" />
