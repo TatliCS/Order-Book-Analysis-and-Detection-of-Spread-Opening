@@ -45,5 +45,8 @@ python order_book_analysis.py          #~10 min capture
 *Example fake_wall_detection.png: Detected Fake Walls*
 ![fake_wall_detection](https://github.com/user-attachments/assets/727d7813-4dfa-4b52-ad7e-dabc2e510bff)
 
-*Example analysis_report.txt file:*
-<img width="773" alt="analysis_report" src="https://github.com/user-attachments/assets/42515e4f-dbf6-43f1-9a6e-83c40fb785c6" />
+<figure>
+  <img src="docs/assets/analysis_report.png" width="750" alt="analysis_report txt output">
+  <figcaption align="center"><em>Example <code>analysis_report.txt</code> output</em></figcaption>
+</figure>
+
