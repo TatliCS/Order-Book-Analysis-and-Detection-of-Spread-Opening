@@ -1,33 +1,23 @@
 Order Book Analysis and Detection of Spread Opening
+*A 10-minute real-time study of **BTC / USDT** on Binance*
 
-You are about to develop a financial analytics platform and need to analyze real-time order book data. Your task is to use the Binance API to pull order book data for the BTC/USDT spot price, listen to it for a short period of time, and perform analysis based on it.
+## 1. Why I built it
 
-Pulling Order Book Data:
-- Get order book data for the spot price of the BTC/USDT pair using the Binance API.
-- For a short period of time (for example, 10 minutes), listen to the data in real-time.
-- Choose how you want to pull and process the order book data.
+As part of the technical assignment for **TRK-Technology**, I was asked to design an analytics pipeline that;
 
-Spread Analysis:
-- Analyze the spread (ask price - bid price) in the data over time.
-- Develop an algorithm that detects spread widening. For example:
-    - Alert when the spread goes above a certain threshold.
-    - Calculate the time it takes for the spread to return to normal levels.
+* Streams the BTC/USDT spot order book in real-time,  
+* Detects meaningful “spread-opening” events,  
+* Visualises and reports the results, and  
+* (optionally) Flags suspicious fake-wall liquidity.
 
-Visualization
-- Visualize the changes in order book data over time with a chart.
-- Mark spread openings on the chart.
+## 2. Quick-start
 
-Reporting:
-- Present your analysis and observations in a short report.
-- Discuss the possible effects of spread widening on the market.
+```bash
+git clone https://github.com/TatliCS/Order-Book-Analysis-and-Detection-of-Spread-Opening.git
+cd Order-Book-Analysis-and-Detection-of-Spread-Opening
+BINANCE_API_KEY=XXX
+BINANCE_API_SECRET=YYY
 
-(Optional) Additional Analysis:
-- Try to detect a fake wall. For example:
-    - An abnormally high volume bid or a sudden
-disappearance of the ask level.
-    - Develop an algorithm that detects such events and analyze the results.
-
-Delivery Expectations:
-- Python code: Pulling order book data with Binance API, analyzing and visualizing.
-- Visualization charts: charts showing spread opening and order book changes.
-- Report: A short report with the results of your analysis and observations.
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+python order_book_analysis.py          #~10 min capture

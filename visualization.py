@@ -1,160 +1,188 @@
-import matplotlib.pyplot as plt
-import pandas as pd
-from typing import List, Tuple, Dict
+"""
+Produce publication-quality png charts required under the
+“Visualization” bullet.
+"""
+
+from __future__ import annotations
 from datetime import datetime
+from typing import List, Tuple, Dict
+
+import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_spread_analysis(timestamps: List[datetime], spreads: List[float], 
-                        widening_events: List[bool], threshold: float):
-    """
-    Create a plot showing spread changes and widening events.
-    
-    Args:
-        timestamps: List of timestamps
-        spreads: List of spread values
-        widening_events: List of boolean values indicating spread widening events
-        threshold: Threshold line for spread widening
-    """
-    plt.figure(figsize=(12, 6))
-    
-    # Plot spread values
-    plt.plot(timestamps, spreads, label='Spread', color='blue')
-    
-    # Plot threshold line
-    plt.axhline(y=threshold, color='r', linestyle='--', label='Threshold')
-    
-    # Mark widening events
-    widening_times = [t for t, w in zip(timestamps, widening_events) if w]
-    widening_spreads = [s for s, w in zip(spreads, widening_events) if w]
-    plt.scatter(widening_times, widening_spreads, color='red', 
-               label='Spread Widening Events', zorder=5)
-    
-    plt.title('Spread Analysis Over Time')
-    plt.xlabel('Time')
-    plt.ylabel('Spread (USDT)')
-    plt.legend()
-    plt.grid(True)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    
-    # Save the plot
-    plt.savefig('spread_analysis.png')
-    plt.close()
 
-def plot_order_book_depth(order_book: Dict[str, List[Tuple[float, float]]], 
-                         current_price: float):
-    """
-    Create a depth chart showing the order book.
-    
-    Args:
-        order_book: Dictionary containing bid and ask orders
-        current_price: Current market price
-    """
-    plt.figure(figsize=(12, 6))
-    
-    # Prepare data
-    bids = order_book['bids']
-    asks = order_book['asks']
-    
-    bid_prices = [price for price, _ in bids]
-    bid_volumes = [volume for _, volume in bids]
-    ask_prices = [price for price, _ in asks]
-    ask_volumes = [volume for _, volume in asks]
-    
-    # Plot bids
-    plt.bar(bid_prices, bid_volumes, width=0.1, color='green', alpha=0.6, label='Bids')
-    
-    # Plot asks
-    plt.bar(ask_prices, ask_volumes, width=0.1, color='red', alpha=0.6, label='Asks')
-    
-    # Plot current price
-    plt.axvline(x=current_price, color='black', linestyle='--', label='Current Price')
-    
-    plt.title('Order Book Depth')
-    plt.xlabel('Price (USDT)')
-    plt.ylabel('Volume (BTC)')
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    
-    # Save the plot
-    plt.savefig('order_book_depth.png')
-    plt.close()
+# --------------------------------------------------------------------------- #
+# Matplotlib style – single place so all charts share the same look
+# --------------------------------------------------------------------------- #
+def _apply_investopedia_style() -> None:
+    plt.rcParams.update(
+        {
+            "figure.figsize": (14, 6),
+            "figure.dpi": 350,
+            "font.family": "DejaVu Sans",
+            "axes.titlesize": 14,
+            "axes.labelsize": 11,
+            "xtick.labelsize": 9,
+            "ytick.labelsize": 9,
+            "axes.grid": True,
+            "grid.linewidth": 0.4,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+            "lines.linewidth": 1.8,
+        }
+    )
 
-def plot_fake_wall_detection(order_book: Dict[str, List[Tuple[float, float]]], 
-                           fake_walls: List[Tuple[str, float, float]]):
-    """
-    Create a plot highlighting detected fake walls in the order book.
-    
-    Args:
-        order_book: Dictionary containing bid and ask orders
-        fake_walls: List of detected fake walls
-    """
-    plt.figure(figsize=(12, 6))
-    
-    # Plot all orders
-    for side in ['bids', 'asks']:
-        prices = [price for price, _ in order_book[side]]
-        volumes = [volume for _, volume in order_book[side]]
-        color = 'green' if side == 'bids' else 'red'
-        plt.bar(prices, volumes, width=0.1, color=color, alpha=0.3, 
-               label=f'{side.capitalize()}')
-    
-    # Highlight fake walls
-    for side, price, volume in fake_walls:
-        color = 'darkgreen' if side == 'bids' else 'darkred'
-        plt.bar(price, volume, width=0.1, color=color, alpha=0.8, 
-               label=f'Fake Wall ({side})')
-    
-    plt.title('Fake Wall Detection')
-    plt.xlabel('Price (USDT)')
-    plt.ylabel('Volume (BTC)')
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    
-    # Save the plot
-    plt.savefig('fake_wall_detection.png')
-    plt.close()
 
-def generate_analysis_report(spreads: List[float], widening_events: List[bool],
-                           recovery_times: List[Tuple[datetime, float]],
-                           fake_walls: List[Tuple[str, float, float]]) -> str:
-    """
-    Generate a text report summarizing the analysis results.
-    
-    Args:
-        spreads: List of spread values
-        widening_events: List of boolean values indicating spread widening events
-        recovery_times: List of recovery time tuples
-        fake_walls: List of detected fake walls
-    
-    Returns:
-        String containing the analysis report
-    """
-    report = []
-    report.append("Order Book Analysis Report")
-    report.append("=" * 50)
-    
-    # Spread Analysis
-    report.append("\nSpread Analysis:")
-    report.append(f"Average Spread: {np.mean(spreads):.2f} USDT")
-    report.append(f"Maximum Spread: {np.max(spreads):.2f} USDT")
-    report.append(f"Minimum Spread: {np.min(spreads):.2f} USDT")
-    report.append(f"Number of Spread Widening Events: {sum(widening_events)}")
-    
-    # Recovery Time Analysis
+# --------------------------------------------------------------------------- #
+# 1. Spread-timeline chart  (plus red marks for widening events)
+# --------------------------------------------------------------------------- #
+def plot_spread_analysis(
+    timestamps: List[datetime],
+    spreads: List[float],
+    wid_flags: List[bool],
+    threshold: float,
+) -> None:
+    _apply_investopedia_style()
+    fig, ax = plt.subplots()
+
+    t0 = timestamps[0]
+    seconds = np.array([(t - t0).total_seconds() for t in timestamps])
+
+    # 5-point rolling median to smooth noise
+    med = (
+        np.concatenate((np.full(4, np.median(spreads[:5])), np.convolve(spreads, np.ones(5) / 5, "valid")))
+        if len(spreads) >= 5
+        else spreads
+    )
+
+    ax.plot(seconds, spreads, color="#c0c0ff", linewidth=1, label="Raw spread")
+    ax.plot(seconds, med, color="#1f77b4", label="5-pt median")
+    ax.axhline(threshold, color="#cc0000", linestyle="--", linewidth=1.2, label="Threshold")
+
+    # red dots = widening
+    w_sec = seconds[np.where(wid_flags)]
+    ax.scatter(w_sec, np.array(spreads)[np.where(wid_flags)], color="#d62728", s=20, label="Widening")
+
+    ypad = (max(spreads) - min(spreads)) * 0.04
+    ax.set_ylim(min(spreads) - ypad, max(spreads) + ypad)
+
+    ax.set_title("BTC/USDT Spread – 10-minute capture")
+    ax.set_xlabel("Seconds since start")
+    ax.set_ylabel("Spread (USDT)")
+    ax.legend(frameon=False)
+    fig.tight_layout()
+    fig.savefig("spread_analysis.png", bbox_inches="tight")
+    plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# 2. Depth snapshot bar-chart
+# --------------------------------------------------------------------------- #
+def plot_order_book_depth(
+    order_book: Dict[str, List[Tuple[float, float]]],
+    mid_price: float | None,
+) -> None:
+    _apply_investopedia_style()
+    fig, ax = plt.subplots()
+
+    bids = sorted(order_book["bids"], key=lambda x: x[0])
+    asks = sorted(order_book["asks"], key=lambda x: x[0])
+
+    if not (bids and asks):
+        fig.savefig("order_book_depth.png")
+        plt.close(fig)
+        return
+
+    b_px, b_vol = zip(*bids)
+    a_px, a_vol = zip(*asks)
+    bar_w = (max(b_px + a_px) - min(b_px + a_px)) / 400
+
+    ax.bar(b_px, b_vol, width=bar_w, color="#1f9d55", alpha=0.7, label="Bids")
+    ax.bar(a_px, a_vol, width=bar_w, color="#e15759", alpha=0.7, label="Asks")
+
+    if mid_price:
+        ax.axvline(mid_price, color="#222222", linestyle="--", linewidth=1.2, label="Mid-price")
+
+    ax.set_title("Order-Book Depth (final snapshot)")
+    ax.set_xlabel("Price (USDT)")
+    ax.set_ylabel("Volume (BTC)")
+    ax.legend(frameon=False)
+    fig.tight_layout()
+    fig.savefig("order_book_depth.png", bbox_inches="tight")
+    plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# 3. Fake-wall overlay (optional analysis)
+# --------------------------------------------------------------------------- #
+def plot_fake_wall_detection(
+    order_book: Dict[str, List[Tuple[float, float]]],
+    fake_walls: List[Tuple[str, float, float]],
+) -> None:
+    _apply_investopedia_style()
+    fig, ax = plt.subplots()
+
+    bids = sorted(order_book["bids"], key=lambda x: x[0])
+    asks = sorted(order_book["asks"], key=lambda x: x[0])
+
+    if not (bids and asks):
+        fig.savefig("fake_wall_detection.png")
+        plt.close(fig)
+        return
+
+    b_px, b_vol = zip(*bids)
+    a_px, a_vol = zip(*asks)
+    bar_w = (max(b_px + a_px) - min(b_px + a_px)) / 400
+
+    ax.bar(b_px, b_vol, width=bar_w, color="#1f9d55", alpha=0.5, label="Bids")
+    ax.bar(a_px, a_vol, width=bar_w, color="#e15759", alpha=0.5, label="Asks")
+
+    for side, price, vol in fake_walls:
+        col = "#1f9d55" if side == "bids" else "#e15759"
+        ax.bar(price, vol, width=bar_w, color="none", edgecolor=col, linewidth=2.0)
+
+    ax.set_title("Detected Fake Walls")
+    ax.set_xlabel("Price (USDT)")
+    ax.set_ylabel("Volume (BTC)")
+    ax.legend(frameon=False)
+    fig.tight_layout()
+    fig.savefig("fake_wall_detection.png", bbox_inches="tight")
+    plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# 4. Text report generator
+# --------------------------------------------------------------------------- #
+def generate_analysis_report(
+    spreads: List[float],
+    widening_flags: List[bool],
+    recovery_times: List[Tuple[datetime, float]],
+    fake_walls: List[Tuple[str, float, float]],
+) -> str:
+    import numpy as np
+
+    rep = [
+        "Order Book Analysis Report",
+        "=" * 50,
+        "",
+        "Spread Analysis:",
+        f"Average Spread:  {np.mean(spreads):8.3f} USDT",
+        f"Maximum Spread:  {np.max(spreads):8.3f} USDT",
+        f"Minimum Spread:  {np.min(spreads):8.3f} USDT",
+        f"Widening Events: {sum(widening_flags)}",
+    ]
+
     if recovery_times:
-        avg_recovery = np.mean([t for _, t in recovery_times])
-        report.append(f"\nRecovery Time Analysis:")
-        report.append(f"Average Recovery Time: {avg_recovery:.2f} seconds")
-        report.append(f"Number of Recovery Events: {len(recovery_times)}")
-    
-    # Fake Wall Analysis
+        rt = np.mean([t for _, t in recovery_times])
+        rep += [
+            "",
+            "Recovery-time Analysis:",
+            f"Average recovery: {rt:.2f} s  across {len(recovery_times)} events",
+        ]
+
     if fake_walls:
-        report.append(f"\nFake Wall Detection:")
-        report.append(f"Number of Detected Fake Walls: {len(fake_walls)}")
-        for side, price, volume in fake_walls:
-            report.append(f"- {side.capitalize()} at {price:.2f} USDT with volume {volume:.4f} BTC")
-    
-    return "\n".join(report) 
+        rep += ["", "Fake-wall Detection:"]
+        for side, px, vol in fake_walls:
+            rep.append(f" – {side:<4} | {px:>10.2f} | {vol:>7.3f} BTC")
+
+    return "\n".join(rep)

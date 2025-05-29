@@ -1,0 +1,11 @@
+Order Book Analysis Report
+==================================================
+
+Spread Analysis:
+Average Spread:   -56.245 USDT
+Maximum Spread:     0.010 USDT
+Minimum Spread:  -122.420 USDT
+Widening Events: 403
+
+Recovery-time Analysis:
+Average recovery: 39.68 s  across 13 events

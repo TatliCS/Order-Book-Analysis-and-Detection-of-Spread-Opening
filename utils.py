@@ -1,109 +1,92 @@
-import numpy as np
-from typing import Dict, List, Tuple
+"""
+Utility functions used by both the WebSocket callback and the
+post-processing stage.
+
+Each helper maps to one line of the *Spread Analysis* / *Optional Analysis*
+requirements.
+"""
+
+from __future__ import annotations
 from datetime import datetime
+from typing import Dict, List, Tuple
 
-def calculate_spread(bid_price: float, ask_price: float) -> float:
-    """Calculate the spread between bid and ask prices."""
-    return ask_price - bid_price
+import numpy as np
 
-def detect_spread_widening(spreads: List[float], threshold: float, window_size: int = 10) -> List[bool]:
+
+# --------------------------------------------------------------------------- #
+# Spread-related helpers  (assignment: “analyze spread … detect widening”)
+# --------------------------------------------------------------------------- #
+def calculate_spread(bid: float, ask: float) -> float:
+    """ask – bid in USDT (can be negative if bid > ask)."""
+    return ask - bid
+
+
+def detect_spread_widening(
+    spreads: List[float],
+    threshold: float,
+    window_size: int = 10,
+) -> List[bool]:
     """
-    Detect spread widening events using a rolling window approach.
-    
-    Args:
-        spreads: List of spread values
-        threshold: Threshold for spread widening detection
-        window_size: Size of the rolling window for baseline calculation
-    
-    Returns:
-        List of boolean values indicating spread widening events
+    Return boolean list – True when current spread >
+    rolling-mean × (1 + threshold).
+    Satisfies: “alert when the spread goes above a certain threshold”.
     """
     if len(spreads) < window_size:
         return [False] * len(spreads)
-    
-    widening_events = []
-    for i in range(len(spreads)):
+
+    flags: List[bool] = []
+    for i, s in enumerate(spreads):
         if i < window_size:
-            widening_events.append(False)
+            flags.append(False)
             continue
-            
-        baseline = np.mean(spreads[i-window_size:i])
-        current_spread = spreads[i]
-        
-        # Detect if current spread is significantly wider than baseline
-        widening_events.append(current_spread > baseline * (1 + threshold))
-    
-    return widening_events
 
-def calculate_recovery_time(spreads: List[float], widening_events: List[bool], 
-                          threshold: float) -> List[Tuple[datetime, float]]:
-    """
-    Calculate the time taken for spread to recover after widening events.
-    
-    Args:
-        spreads: List of spread values
-        widening_events: List of boolean values indicating spread widening events
-        threshold: Threshold for considering spread as recovered
-    
-    Returns:
-        List of tuples containing (event_time, recovery_time_in_seconds)
-    """
-    recovery_times = []
-    in_widening = False
-    start_time = None
-    
-    for i in range(len(spreads)):
-        if widening_events[i] and not in_widening:
-            in_widening = True
-            start_time = datetime.now()
-        elif not widening_events[i] and in_widening:
-            if spreads[i] <= threshold:
-                in_widening = False
-                if start_time:
-                    recovery_time = (datetime.now() - start_time).total_seconds()
-                    recovery_times.append((start_time, recovery_time))
-    
-    return recovery_times
+        baseline = np.mean(spreads[i - window_size : i])
+        flags.append(s > baseline * (1 + threshold))
+    return flags
 
-def detect_fake_walls(order_book: Dict[str, List[Tuple[float, float]]], 
-                     volume_threshold: float = 100.0) -> List[Tuple[str, float, float]]:
-    """
-    Detect potential fake walls in the order book.
-    
-    Args:
-        order_book: Dictionary containing bid and ask orders
-        volume_threshold: Threshold for considering a wall as significant
-    
-    Returns:
-        List of tuples containing (side, price, volume) of detected fake walls
-    """
-    fake_walls = []
-    
-    for side in ['bids', 'asks']:
-        orders = order_book[side]
-        for price, volume in orders:
-            if volume > volume_threshold:
-                # Check if this is an unusually large order
-                avg_volume = np.mean([v for _, v in orders])
-                if volume > avg_volume * 3:  # Volume is 3x larger than average
-                    fake_walls.append((side, price, volume))
-    
-    return fake_walls
 
-def calculate_order_book_imbalance(order_book: Dict[str, List[Tuple[float, float]]]) -> float:
+def calculate_recovery_time(
+    timestamps: List[datetime],
+    spreads: List[float],
+    widening: List[bool],
+    thr: float,
+) -> List[Tuple[datetime, float]]:
     """
-    Calculate the imbalance between bid and ask sides of the order book.
-    
-    Args:
-        order_book: Dictionary containing bid and ask orders
-    
-    Returns:
-        Imbalance ratio (positive means more bids, negative means more asks)
+    For every widening event measure seconds until spread shrinks back
+    to <= |thr|  (assignment: “calculate the time it takes to return
+    to normal levels”).
     """
-    bid_volume = sum(volume for _, volume in order_book['bids'])
-    ask_volume = sum(volume for _, volume in order_book['asks'])
-    
-    if ask_volume == 0:
-        return 0
-    
-    return (bid_volume - ask_volume) / (bid_volume + ask_volume) 
+    rec: List[Tuple[datetime, float]] = []
+    in_evt, start_t = False, None
+
+    for t, s, flag in zip(timestamps, spreads, widening):
+        if flag and not in_evt:
+            start_t, in_evt = t, True
+        elif in_evt and abs(s) <= thr:
+            rec.append((start_t, (t - start_t).total_seconds()))
+            in_evt = False
+    return rec
+
+
+# --------------------------------------------------------------------------- #
+# Fake-wall detection  (Optional Analysis block)
+# --------------------------------------------------------------------------- #
+def detect_fake_walls(
+    order_book: Dict[str, List[Tuple[float, float]]],
+    volume_threshold: float = 100.0,
+) -> List[Tuple[str, float, float]]:
+    """
+    Flag orders whose volume is both:
+      • > volume_threshold
+      • > 3× average volume on the same side
+    """
+    fake: List[Tuple[str, float, float]] = []
+    for side in ["bids", "asks"]:
+        vols = np.array([v for _, v in order_book[side]])
+        if vols.size == 0:
+            continue
+        avg = vols.mean()
+        for price, vol in order_book[side]:
+            if vol > volume_threshold and vol > avg * 3:
+                fake.append((side, price, vol))
+    return fake
