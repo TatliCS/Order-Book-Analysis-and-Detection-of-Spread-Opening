@@ -25,17 +25,14 @@ python order_book_analysis.py          #~10 min capture
 
 ## 3. Repo Layout
 
+```text
 ├─ order_book_analysis.py   ← orchestration / WebSocket loop
-|
 ├─ utils.py                 ← math helpers & detection logic
-|
 ├─ visualization.py         ← Styled charts
-|
 ├─ requirements.txt
-|
 ├─ .env.example             ← rename & fill with your keys
-|
 └─ docs/assets/             ← sample PNGs for this README
+```
 
 ## 4. Data Visualization and Report
 
